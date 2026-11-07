@@ -1,0 +1,80 @@
+erDiagram
+    CATEGORIA ||--o{ PRODUTO : "classifica"
+    FORNECEDOR ||--o{ PRODUTO : "fornece"
+    PRODUTO ||--o{ ITEM_PEDIDO : "compoe"
+    PRODUTO ||--o{ MOVIMENTACAO_ESTOQUE : "movimenta"
+    CLIENTE ||--o{ PEDIDO : "realiza"
+    FUNCIONARIO ||--o{ PEDIDO : "registra"
+    PEDIDO ||--|{ ITEM_PEDIDO : "contem"
+
+    CATEGORIA {
+        SERIAL id_categoria PK
+        VARCHAR nome "NOT NULL"
+        TEXT descricao
+    }
+
+    FORNECEDOR {
+        SERIAL id_fornecedor PK
+        VARCHAR nome "NOT NULL"
+        VARCHAR cnpj "NOT NULL, UNIQUE"
+        VARCHAR telefone
+        VARCHAR email
+    }
+
+    PRODUTO {
+        SERIAL id_produto PK
+        INT id_categoria FK "NOT NULL"
+        INT id_fornecedor FK "NOT NULL"
+        VARCHAR nome "NOT NULL"
+        TEXT descricao
+        NUMERIC preco "NOT NULL, > 0"
+        INT quantidade_estoque "NOT NULL, >= 0"
+        INT estoque_minimo "NOT NULL, >= 0"
+        BOOLEAN ativo "DEFAULT TRUE"
+    }
+
+    CLIENTE {
+        SERIAL id_cliente PK
+        VARCHAR nome "NOT NULL"
+        VARCHAR cpf "NOT NULL, UNIQUE"
+        VARCHAR email "NOT NULL"
+        VARCHAR telefone
+        TIMESTAMP data_cadastro "DEFAULT NOW()"
+    }
+
+    FUNCIONARIO {
+        SERIAL id_funcionario PK
+        VARCHAR nome "NOT NULL"
+        VARCHAR cpf "NOT NULL, UNIQUE"
+        VARCHAR cargo "NOT NULL"
+        VARCHAR email "NOT NULL"
+        DATE data_admissao "NOT NULL"
+    }
+
+    PEDIDO {
+        SERIAL id_pedido PK
+        INT id_cliente FK "NOT NULL"
+        INT id_funcionario FK "NOT NULL"
+        TIMESTAMP data_pedido "DEFAULT NOW()"
+        NUMERIC valor_total "DEFAULT 0, >= 0"
+        VARCHAR status "DEFAULT 'PENDENTE'"
+    }
+
+    ITEM_PEDIDO {
+        SERIAL id_item PK
+        INT id_pedido FK "NOT NULL"
+        INT id_produto FK "NOT NULL"
+        INT quantidade "NOT NULL, > 0"
+        NUMERIC preco_unitario "NOT NULL, > 0"
+        NUMERIC desconto "DEFAULT 0, >= 0"
+        NUMERIC subtotal "NOT NULL, > 0"
+    }
+
+    MOVIMENTACAO_ESTOQUE {
+        SERIAL id_movimentacao PK
+        INT id_produto FK "NOT NULL"
+        VARCHAR tipo_movimentacao "ENTRADA ou SAIDA"
+        INT quantidade "NOT NULL, > 0"
+        TIMESTAMP data_movimentacao "DEFAULT NOW()"
+        TEXT observacao
+    }
