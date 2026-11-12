@@ -8,19 +8,17 @@
 
 ---
 
+# 1. Proposta e Requisitos
+
 ## Situação-Problema
 
 A loja TechShop Eletrônicos opera no ramo de varejo e enfrenta dificuldades para gerenciar suas vendas, controle de estoque, histórico de clientes e acompanhamento de desempenho dos seus vendedores. Atualmente, os dados são registrados em planilhas dispersas, gerando duplicidade de informações, falta de integridade nos pedidos e lentidão para gerar relatórios financeiros e de estoque.
-
----
 
 ## Usuários do Sistema
 
 - **Atendentes/Vendedores:** Registram novas vendas e consultam a disponibilidade de produtos no estoque.
 - **Gerente de Loja:** Acompanha métricas de desempenho de vendas, rankings de vendedores e produtos mais vendidos.
 - **Administrador de Estoque:** Cadastra novos produtos, atualiza preços e monitora reposições.
-
----
 
 ## Requisitos Funcionais (RF)
 
@@ -30,8 +28,6 @@ A loja TechShop Eletrônicos opera no ramo de varejo e enfrenta dificuldades par
 - **RF04:** Garantir a consistência de valores monetários e quantidades sem permitir valores negativos.
 - **RF05:** Consultar vendas por período, faturamento total, ticket médio e rankings de vendedores e produtos.
 
----
-
 ## Requisitos Não-Funcionais (RNF)
 
 - **RNF01 (Integridade):** Garantir a integridade referencial por meio de Chaves Estrangeiras (FK) utilizando a engine InnoDB do MySQL.
@@ -40,15 +36,15 @@ A loja TechShop Eletrônicos opera no ramo de varejo e enfrenta dificuldades par
 
 ---
 
+# 2. Modelagem e Dicionário de Dados
+
 ## Normalização até a 3ª Forma Normal (3FN)
 
-- **1FN:** Todos os atributos são atômicos (ex: dados de clientes estruturados de forma indivisível, cidade e UF separados; pedidos separados de seus itens).
-- **2FN:** As tabelas com chave primária composta (`ITEM_PEDIDO`) possuem todos os atributos não-chave (`quantidade`, `preco_praticado`) dependentes da totalidade da chave (`id_pedido` + `id_produto`).
+- **1FN:** Todos os atributos são atômicos (ex: dados de clientes estruturados de forma indivisível, cidade e UF separados; pedidos separados de seus itens na tabela associativa).
+- **2FN:** As tabelas com chave primária composta (`ITEM_PEDIDO`) possuem todos os atributos não-chave (`quantidade`, `preco_praticado`) dependentes da totalidade da chave (`id_pedido` + `id_produto`), eliminando dependências parciais.
 - **3FN:** Não há dependências transitivas entre atributos não-chave (dados de categoria residem na entidade própria `CATEGORIA`, e os dados de funcionários e clientes estão isolados sem redundância no pedido).
 
----
-
-## Modelagem das Tabelas
+## Dicionário de Dados
 
 ### 1. CATEGORIA
 
@@ -107,9 +103,9 @@ A loja TechShop Eletrônicos opera no ramo de varejo e enfrenta dificuldades par
 
 ---
 
-## Scripts SQL
+# 3. Scripts de Criação e Carga
 
-### 1. Criação do Banco e Tabelas (DDL)
+## Script DDL de Criação (01_schema.sql)
 
 ```sql
 DROP DATABASE IF EXISTS techshop;
@@ -171,11 +167,39 @@ CREATE TABLE ITEM_PEDIDO (
 ) ENGINE=InnoDB;
 ```
 
+## Índices B-Tree (03_indexes.sql)
+
+```sql
+CREATE INDEX idx_pedido_data ON PEDIDO (data_pedido);
+CREATE INDEX idx_cliente_email ON CLIENTE (email);
+
+EXPLAIN SELECT * FROM PEDIDO WHERE data_pedido BETWEEN '2026-01-01' AND '2026-03-31';
+EXPLAIN SELECT * FROM CLIENTE WHERE email = 'ana.ribeiro@email.com';
+```
+
+## Operação com Transação ACID (05_transactions.sql)
+
+```sql
+START TRANSACTION;
+
+INSERT INTO PEDIDO (id_pedido, data_pedido, id_cliente, id_funcionario) 
+VALUES (27, NOW(), 1, 1);
+
+INSERT INTO ITEM_PEDIDO (id_pedido, id_produto, quantidade, preco_praticado) 
+VALUES (27, 9, 2, 350.00);
+
+UPDATE PRODUTO 
+SET qtd_estoque = qtd_estoque - 2 
+WHERE id_produto = 9 AND qtd_estoque >= 2;
+
+COMMIT;
+```
+
 ---
 
-## Consultas SQL e Resultados
+# 4. Consultas e Validação
 
-### Consulta 1: Catálogo de Produtos e Categorias
+## Consulta 1: Catálogo de Produtos e Categorias
 
 ```sql
 SELECT 
@@ -187,7 +211,7 @@ INNER JOIN CATEGORIA c ON p.id_categoria = c.id_categoria
 ORDER BY c.nome_categoria, p.nome_produto;
 ```
 
-#### Resultado Comando SQL:
+### Resultado Comando SQL:
 
 | nome_produto | nome_categoria | preco_unitario |
 | :--- | :--- | :--- |
@@ -209,7 +233,7 @@ ORDER BY c.nome_categoria, p.nome_produto;
 
 ---
 
-### Consulta 2: Faturamento Total por Cliente
+## Consulta 2: Faturamento Total por Cliente
 
 ```sql
 SELECT 
@@ -222,7 +246,7 @@ GROUP BY c.id_cliente, c.nome_cliente
 ORDER BY faturamento_total DESC;
 ```
 
-#### Resultado Comando SQL:
+### Resultado Comando SQL:
 
 | nome_cliente | faturamento_total |
 | :--- | :--- |
@@ -244,7 +268,7 @@ ORDER BY faturamento_total DESC;
 
 ---
 
-### Consulta 3: Produtos com Preço Acima da Média
+## Consulta 3: Produtos com Preço Acima da Média
 
 ```sql
 SELECT 
@@ -255,7 +279,7 @@ WHERE preco_unitario > (SELECT AVG(preco_unitario) FROM PRODUTO)
 ORDER BY preco_unitario DESC;
 ```
 
-#### Resultado Comando SQL:
+### Resultado Comando SQL:
 
 | nome_produto | preco_unitario |
 | :--- | :--- |
@@ -268,7 +292,7 @@ ORDER BY preco_unitario DESC;
 
 ---
 
-### Consulta 4: Clientes Cadastrados
+## Consulta 4: Clientes Cadastrados
 
 ```sql
 SELECT 
@@ -279,7 +303,7 @@ FROM CLIENTE
 ORDER BY nome_cliente;
 ```
 
-#### Resultado Comando SQL:
+### Resultado Comando SQL:
 
 | nome_cliente | email | cidade |
 | :--- | :--- | :--- |
@@ -298,7 +322,7 @@ ORDER BY nome_cliente;
 
 ---
 
-### Consulta 5: Desempenho de Vendedores
+## Consulta 5: Desempenho de Vendedores
 
 ```sql
 SELECT 
@@ -311,7 +335,7 @@ GROUP BY f.id_funcionario, f.nome_funcionario
 ORDER BY total_vendido DESC;
 ```
 
-#### Resultado Comando SQL:
+### Resultado Comando SQL:
 
 | nome_funcionario | total_vendido |
 | :--- | :--- |
@@ -321,7 +345,7 @@ ORDER BY total_vendido DESC;
 
 ---
 
-### Consulta 6: Total de Itens Vendidos por Categoria
+## Consulta 6: Total de Itens Vendidos por Categoria
 
 ```sql
 SELECT 
@@ -334,7 +358,7 @@ GROUP BY c.id_categoria, c.nome_categoria
 ORDER BY total_itens_vendidos DESC;
 ```
 
-#### Resultado Comando SQL:
+### Resultado Comando SQL:
 
 | nome_categoria | total_itens_vendidos |
 | :--- | :--- |
@@ -346,7 +370,7 @@ ORDER BY total_itens_vendidos DESC;
 
 ---
 
-### Consulta 7: Ticket Médio da Loja
+## Consulta 7: Ticket Médio da Loja
 
 ```sql
 SELECT 
@@ -355,7 +379,7 @@ FROM PEDIDO p
 INNER JOIN ITEM_PEDIDO i ON p.id_pedido = i.id_pedido;
 ```
 
-#### Resultado Comando SQL:
+### Resultado Comando SQL:
 
 | ticket_medio_loja |
 | :--- |
@@ -363,7 +387,7 @@ INNER JOIN ITEM_PEDIDO i ON p.id_pedido = i.id_pedido;
 
 ---
 
-### Consulta 8: Busca por E-mail do Cliente
+## Consulta 8: Busca por E-mail do Cliente
 
 ```sql
 SELECT 
@@ -373,7 +397,7 @@ FROM CLIENTE
 WHERE email = 'ana.ribeiro@email.com';
 ```
 
-#### Resultado Comando SQL:
+### Resultado Comando SQL:
 
 | nome_cliente | email |
 | :--- | :--- |
@@ -381,7 +405,7 @@ WHERE email = 'ana.ribeiro@email.com';
 
 ---
 
-### Consulta 9: Resumo de Pedidos e Datas
+## Consulta 9: Resumo de Pedidos e Datas
 
 ```sql
 SELECT 
@@ -394,7 +418,7 @@ GROUP BY p.id_pedido, p.data_pedido
 ORDER BY p.id_pedido;
 ```
 
-#### Amostra do Resultado Comando SQL:
+### Amostra do Resultado Comando SQL:
 
 | id_pedido | data_pedido | valor_total_pedido |
 | :--- | :--- | :--- |
@@ -404,7 +428,7 @@ ORDER BY p.id_pedido;
 
 ---
 
-### Consulta 10: Alerta de Reposição de Estoque
+## Consulta 10: Alerta de Reposição de Estoque
 
 ```sql
 SELECT 
@@ -420,32 +444,34 @@ ORDER BY p.qtd_estoque ASC;
 
 ---
 
-## Índices B-Tree
+# 5. Apresentação e Demonstração (Roteiro do Vídeo)
 
-```sql
-CREATE INDEX idx_pedido_data ON PEDIDO (data_pedido);
-CREATE INDEX idx_cliente_email ON CLIENTE (email);
+Como o professor solicitou um vídeo demonstrando o código em execução, o grupo deve seguir este roteiro objetivo de gravação:
 
-EXPLAIN SELECT * FROM PEDIDO WHERE data_pedido BETWEEN '2026-01-01' AND '2026-03-31';
-EXPLAIN SELECT * FROM CLIENTE WHERE email = 'ana.ribeiro@email.com';
-```
+- **Tempo sugerido:** 5 a 7 minutos.
+- **Ambiente de gravação:** MySQL Workbench com gravação de tela (OBS Studio, Xbox Game Bar `Win+G` ou Clipchamp).
+- **Divisão entre os integrantes:**
 
----
+### Bloco 1 (0:00 - 1:15) — Introdução e Contexto (Felipe Siqueira)
+- Apresentar o grupo (Felipe, Lucas, Luiggi e Giuseppe), o curso (Engenharia da Computação - Mackenzie) e o tema (TechShop Eletrônicos).
+- Explicar rapidamente o problema de negócio (planilhas manuais, duplicidades e falta de rastreio de estoque).
+- Mostrar o diagrama relacional (6 tabelas normalizadas até 3FN).
 
-## Operação com Transação ACID
+### Bloco 2 (1:15 - 2:30) — Execução do DDL e Carga (Lucas Hu)
+- Abrir o MySQL Workbench e rodar o `01_schema.sql` (mostrar as 6 tabelas criadas com `ENGINE=InnoDB`).
+- Destacar as chaves primárias, estrangeiras e restrições `CHECK` (`preco_unitario > 0`, `qtd_estoque >= 0`).
+- Rodar o `02_seed.sql` com mais de 100 registros mantendo a integridade referencial.
+- Mostrar que todas as tabelas foram populadas com sucesso.
 
-```sql
-START TRANSACTION;
+### Bloco 3 (2:30 - 4:15) — Execução das Consultas e Índices (Luiggi)
+- Executar a Consulta 1 (Catálogo completo com `INNER JOIN`).
+- Executar a Consulta 2 (Faturamento por cliente com `GROUP BY` e `SUM`, mostrando o cliente Bruno no topo).
+- Executar a Consulta 5 (Ranking de vendas por vendedora).
+- Executar o `03_indexes.sql` mostrando a análise do plano de execução via `EXPLAIN` comprovando o uso do índice B-Tree na data do pedido e e-mail.
 
-INSERT INTO PEDIDO (id_pedido, data_pedido, id_cliente, id_funcionario) 
-VALUES (27, NOW(), 1, 1);
-
-INSERT INTO ITEM_PEDIDO (id_pedido, id_produto, quantidade, preco_praticado) 
-VALUES (27, 9, 2, 350.00);
-
-UPDATE PRODUTO 
-SET qtd_estoque = qtd_estoque - 2 
-WHERE id_produto = 9 AND qtd_estoque >= 2;
-
-COMMIT;
-```
+### Bloco 4 (4:15 - 5:30) — Transação ACID e Fechamento (Giuseppe)
+- Abrir e rodar o `05_transactions.sql`.
+- Explicar o bloco `START TRANSACTION`, a inserção do pedido, a adição do item e o `UPDATE` dando baixa no estoque físico de forma atômica.
+- Mostrar a execução do `COMMIT` com a confirmação da alteração de saldo.
+- Explicar o que acontece no cenário de `ROLLBACK` caso falte estoque físico.
+- Finalizar agradecendo a atenção do professor e da banca.
